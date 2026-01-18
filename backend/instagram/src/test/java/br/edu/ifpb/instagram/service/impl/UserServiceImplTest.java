@@ -1,8 +1,9 @@
 package br.edu.ifpb.instagram.service.impl;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,11 +13,13 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import br.edu.ifpb.instagram.model.dto.UserDto;
@@ -31,6 +34,9 @@ public class UserServiceImplTest {
 
     @InjectMocks
     UserServiceImpl userService;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @Test
     void testFindById_ReturnsUserDto() {
@@ -112,5 +118,67 @@ public class UserServiceImplTest {
 
         verify(userRepository, times(1)).existsById(userId);
         verify(userRepository, times(1)).deleteById(userId);
+    }
+
+    // ------------------------------Levi------------------------------
+    @Test
+    void findById_WithNoExistingUserEntity_ThrowsRuntimeException() {
+        var id = 1L;
+        var sut = catchThrowable(() -> userService.findById(id));
+        assertThat(sut)
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("User not found with id: 1");
+
+    }
+
+    // ------------------------------Levi------------------------------
+    @Test
+    void findById_WithExistingUser_ReturnsUserEntity() {
+        var id = 1L;
+        var userEntity = new UserEntity();
+        userEntity.setId(id);
+        userEntity.setEmail("userEntity@mail.com");
+        userEntity.setFullName("The user entity name");
+        userEntity.setEncryptedPassword("userPass");
+        ArgumentCaptor<Long> userId = ArgumentCaptor.forClass(Long.class);
+        when(userRepository.findById(userId.capture())).thenReturn(Optional.of(userEntity));
+
+        var sut = userService.findById(id);
+
+        assertNotNull(sut);
+        assertInstanceOf(UserDto.class, sut,"Must be instance of UserDto");
+        assertEquals(userEntity.getEmail(), sut.email());
+        assertEquals(id, userId.getValue());
+    }
+
+    // ------------------------------Levi------------------------------
+    @Test
+    void shouldCreateUserSuccessfully() {
+        var id = 1L;
+
+        var userDto = new UserDto(id,
+                "The user entity name",
+                "User Entity",
+                "userEntity@mail.com",
+                "userPass",
+                passwordEncoder.encode("userPass"));
+
+        UserEntity mockedUserEntity = new UserEntity();
+        mockedUserEntity.setId(id);
+        mockedUserEntity.setUsername("User Entity");
+        mockedUserEntity.setFullName("The user entity name");
+        mockedUserEntity.setEmail("userEntity@mail.com");
+        mockedUserEntity.setEncryptedPassword(passwordEncoder.encode("userPass"));
+
+        when(userRepository.save(any(UserEntity.class))).thenReturn(mockedUserEntity);
+
+        UserDto createdUserDto = userService.createUser(userDto);
+
+        assertNotNull(createdUserDto);
+        assertEquals(userDto.id(), createdUserDto.id());
+        assertEquals(userDto.fullName(), createdUserDto.fullName());
+        assertEquals(userDto.email(), createdUserDto.email());
+        assertNull(createdUserDto.password());
+        assertNull(createdUserDto.encryptedPassword());
     }
 }
