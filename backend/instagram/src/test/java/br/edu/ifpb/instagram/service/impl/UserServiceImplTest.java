@@ -7,9 +7,14 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -18,14 +23,14 @@ import br.edu.ifpb.instagram.model.dto.UserDto;
 import br.edu.ifpb.instagram.model.entity.UserEntity;
 import br.edu.ifpb.instagram.repository.UserRepository;
 
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 public class UserServiceImplTest {
 
-    @MockitoBean
-    UserRepository userRepository; // Repositório simulado
+    @Mock
+    UserRepository userRepository;
 
-    @Autowired
-    UserServiceImpl userService; // Classe sob teste
+    @InjectMocks
+    UserServiceImpl userService;
 
     @Test
     void testFindById_ReturnsUserDto() {
@@ -68,5 +73,44 @@ public class UserServiceImplTest {
 
         // Verificar a interação com o mock
         verify(userRepository, times(1)).findById(userId);
+    }
+
+    // Teste Bruno
+    @Test
+    void testFindAll_ReturnsListOfUsers() {
+        UserEntity user1 = new UserEntity();
+        user1.setId(1L);
+        user1.setFullName("User One");
+        user1.setEmail("user1@email.com");
+
+        UserEntity user2 = new UserEntity();
+        user2.setId(2L);
+        user2.setFullName("User Two");
+        user2.setEmail("user2@email.com");
+
+        when(userRepository.findAll())
+                .thenReturn(List.of(user1, user2));
+
+        List<UserDto> users = userService.findAll();
+
+        assertNotNull(users);
+        assertEquals(2, users.size());
+        assertEquals("User One", users.get(0).fullName());
+        assertEquals("User Two", users.get(1).fullName());
+
+        verify(userRepository, times(1)).findAll();
+    }
+
+    // Teste Bruno
+    @Test
+    void testDeleteUser_CallsRepositoryDeleteById() {
+        Long userId = 1L;
+
+        when(userRepository.existsById(userId)).thenReturn(true);
+
+        userService.deleteUser(userId);
+
+        verify(userRepository, times(1)).existsById(userId);
+        verify(userRepository, times(1)).deleteById(userId);
     }
 }
