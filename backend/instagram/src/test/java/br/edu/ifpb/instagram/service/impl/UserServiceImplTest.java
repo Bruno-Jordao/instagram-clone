@@ -1,30 +1,24 @@
 package br.edu.ifpb.instagram.service.impl;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
-import java.util.List;
-import java.util.Optional;
-
+import br.edu.ifpb.instagram.model.dto.UserDto;
+import br.edu.ifpb.instagram.model.entity.UserEntity;
+import br.edu.ifpb.instagram.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import br.edu.ifpb.instagram.model.dto.UserDto;
-import br.edu.ifpb.instagram.model.entity.UserEntity;
-import br.edu.ifpb.instagram.repository.UserRepository;
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceImplTest {
@@ -180,5 +174,63 @@ public class UserServiceImplTest {
         assertEquals(userDto.email(), createdUserDto.email());
         assertNull(createdUserDto.password());
         assertNull(createdUserDto.encryptedPassword());
+    }
+
+    @Test //gilberto
+    void shouldUpdateUserSuccessfully() {
+        var id = 1L;
+
+        var originalUserDto = new UserDto(id,
+                "The user entity name",
+                "User Entity",
+                "userEntity@mail.com",
+                "userPass",
+                passwordEncoder.encode("userPass"));
+
+        var mockedUserEntity = new UserEntity();
+        mockedUserEntity.setId(id);
+        mockedUserEntity.setUsername("User Entity");
+        mockedUserEntity.setFullName("The user entity name");
+        mockedUserEntity.setEmail("userEntity@mail.com");
+        mockedUserEntity.setEncryptedPassword(passwordEncoder.encode("userPass"));
+
+        var updatedUserDto = new UserDto(id,
+                "Updated user entity name",
+                "User Entity",
+                "userEntity@mail.com",
+                "userPass",
+                passwordEncoder.encode("userPass"));
+
+        when(userRepository.findById(id)).thenReturn(Optional.of(mockedUserEntity));
+
+        when(userRepository.save(any(UserEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UserDto returnedUserDto = userService.updateUser(updatedUserDto);
+
+        assertNotNull(returnedUserDto);
+        assertEquals(updatedUserDto.id(), returnedUserDto.id());
+        assertEquals(updatedUserDto.fullName(), returnedUserDto.fullName());
+        assertEquals(updatedUserDto.email(), returnedUserDto.email());
+        assertEquals(updatedUserDto.username(), returnedUserDto.username());
+        assertNull(returnedUserDto.password());
+        assertNull(returnedUserDto.encryptedPassword());
+    }
+
+    @Test //gilberto
+    void shouldThrowExceptionWhenUserNotFoundDuringUpdate() {
+        var id = 1L;
+
+        var updatedUserDto = new UserDto(id,
+                "Updated user entity name",
+                "User Entity",
+                "userEntity@mail.com",
+                "userPass",
+                passwordEncoder.encode("userPass"));
+
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+        RuntimeException exception = assertThrows(RuntimeException.class, () -> userService.updateUser(updatedUserDto));
+
+        assertEquals("User not found with id: 1", exception.getMessage());
     }
 }
