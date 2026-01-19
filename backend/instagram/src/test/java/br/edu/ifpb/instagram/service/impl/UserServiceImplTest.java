@@ -233,4 +233,35 @@ public class UserServiceImplTest {
 
         assertEquals("User not found with id: 1", exception.getMessage());
     }
+
+    @Test
+    void shouldReturnListOfUserDtosWhenUsersExist() {
+        var id = 1L;
+        var userEntity = new UserEntity();
+        userEntity.setId(id);
+        userEntity.setFullName("John Doe");
+        userEntity.setUsername("john");
+        userEntity.setEmail("john@example.com");
+        userEntity.setEncryptedPassword("encryptedPassword");
+
+        when(userRepository.findAll()).thenReturn(List.of(userEntity));
+
+        var result = userService.findAll();
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals("John Doe", result.get(0).fullName());
+        assertEquals("john", result.get(0).username());
+        assertEquals("john@example.com", result.get(0).email());
+    }
+
+    @Test
+    void shouldThrowExceptionWhenNoUsersExist() {
+        when(userRepository.findAll()).thenReturn(List.of());
+
+        var result = userService.findAll();
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
 }
